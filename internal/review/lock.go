@@ -35,14 +35,16 @@ func (m *Manager) LockMainshock(clusterID, eventID int64) (*model.Cluster, error
 		return nil, fmt.Errorf("%w: event %d not in same catalog", model.ErrInvalid, eventID)
 	}
 
-	// 校验事件已归属该簇（或本身是该簇当前主震）。
+	// 校验事件已归属该簇（任意角色均可，含当前主震重复锁定）。
+	// 重新锁定一个余震为主震是合法操作：其当前角色为 aftershock，
+	// 故此处只要求事件是簇内成员，不能限定为已是 mainshock。
 	members, err := m.db.ListMembersByCluster(clusterID)
 	if err != nil {
 		return nil, err
 	}
 	inCluster := false
 	for _, mem := range members {
-		if mem.EventID == eventID && mem.Role == model.RoleMainshock {
+		if mem.EventID == eventID {
 			inCluster = true
 			break
 		}
@@ -51,9 +53,14 @@ func (m *Manager) LockMainshock(clusterID, eventID int64) (*model.Cluster, error
 		return nil, fmt.Errorf("%w: event %d not a member of cluster %d", model.ErrInvalid, eventID, clusterID)
 	}
 
-	// 更新主震角色：新主震 role=mainshock，原主震（若有）降为 aftershock。
+	// 更新主震角色：新主震 role=mainshock，原主震（若有，且非新主震）降为 aftershock。
+	// AddMembership 在已存在记录上不更新 role，故先 DeleteMembership 再 AddMembership，
+	// 确保角色变更真正落库，从而使目录快照哈希随角色变化而改变。
 	for _, mem := range members {
 		if mem.EventID == eventID {
+			if mem.Role == model.RoleMainshock {
+				continue // 本就是主震，无需改写
+			}
 			if err := m.db.DeleteMembership(clusterID, eventID); err != nil {
 				return nil, err
 			}

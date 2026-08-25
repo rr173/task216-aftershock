@@ -50,7 +50,7 @@ func Snapshot(db *store.DB, catalogID int64) (string, error) {
 		return members[i].eventID < members[j].eventID
 	})
 	for _, m := range members {
-		fmt.Fprintf(&b, "M|%d|%d\n", m.clusterID, m.eventID)
+		fmt.Fprintf(&b, "M|%d|%d|%s\n", m.clusterID, m.eventID, m.role)
 	}
 
 	for _, c := range clusters {

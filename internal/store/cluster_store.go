@@ -72,10 +72,12 @@ func (db *DB) UpdateCluster(id, mainshockID int64, status string, confidence flo
 }
 
 // AddMembership 建立簇-事件关联（幂等，重复插入忽略）。
+// 注意：INSERT OR IGNORE 在记录已存在时不会更新 role，故调用方在需要
+// 改写角色（如锁定主震）时须先 DeleteMembership 再 AddMembership。
 func (db *DB) AddMembership(clusterID, eventID int64, role string) error {
 	_, err := db.conn.Exec(
 		`INSERT OR IGNORE INTO cluster_memberships (cluster_id, event_id, role) VALUES (?, ?, ?)`,
-		clusterID, eventID, model.RoleAftershock)
+		clusterID, eventID, role)
 	return mapSQLError(err)
 }
 
