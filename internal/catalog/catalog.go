@@ -88,14 +88,14 @@ func (m *Manager) Archive(id int64) error {
 	}
 }
 
-// IsWritable 判断目录是否可写（未封存）。
+// IsWritable 判断目录是否可写：已封存目录只读，返回 ErrArchived。
 func (m *Manager) IsWritable(id int64) error {
 	c, err := m.db.GetCatalog(id)
 	if err != nil {
 		return err
 	}
 	if c.Status == model.CatalogArchived {
-		return nil
+		return model.ErrArchived
 	}
 	return nil
 }

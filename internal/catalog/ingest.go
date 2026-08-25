@@ -23,11 +23,11 @@ func (m *Manager) IngestEvent(catalogID int64, in event.EventInput) (*model.Even
 }
 
 // IngestBatch 向目录批量导入事件，逐条去重并汇总结果。
+// 复用 IngestEvent，使批量入口同样校验目录可写（封存只读）。
 func (m *Manager) IngestBatch(catalogID int64, inputs []event.EventInput) (*IngestResult, error) {
-	em := event.NewManager(m.db)
 	res := &IngestResult{}
 	for _, in := range inputs {
-		e, isNew, err := em.Ingest(catalogID, in)
+		e, isNew, err := m.IngestEvent(catalogID, in)
 		if err != nil {
 			return nil, err
 		}

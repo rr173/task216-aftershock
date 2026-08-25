@@ -44,7 +44,7 @@ func (s *Server) createEvent(w http.ResponseWriter, r *http.Request) {
 		}
 		in.OriginTime = t
 	}
-	e, isNew, err := s.app.Event.Ingest(catalogID, in)
+	e, isNew, err := s.app.Catalog.IngestEvent(catalogID, in)
 	if err != nil {
 		writeErr(w, err)
 		return
