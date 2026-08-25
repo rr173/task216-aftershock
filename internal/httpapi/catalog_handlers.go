@@ -67,9 +67,6 @@ func (s *Server) publishCatalog(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, model.ErrInvalid)
 		return
 	}
-	if c, getErr := s.app.Catalog.Get(id); getErr == nil && c.Status == model.CatalogImporting {
-		_ = s.app.Catalog.MarkAnalyzing(id)
-	}
 	if err := s.app.Catalog.Publish(id); err != nil {
 		writeErr(w, err)
 		return

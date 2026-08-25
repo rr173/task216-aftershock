@@ -14,12 +14,12 @@ type IngestResult struct {
 }
 
 // IngestEvent 向目录导入单条事件：校验目录可写、事件合法、幂等去重。
+// 导入不推进目录状态，目录需经显式 MarkAnalyzing 进入分析阶段。
 // 返回 (事件, 是否为新事件, 错误)。
 func (m *Manager) IngestEvent(catalogID int64, in event.EventInput) (*model.Event, bool, error) {
 	if err := m.IsWritable(catalogID); err != nil {
 		return nil, false, err
 	}
-	_ = m.MarkAnalyzing(catalogID)
 	return event.NewManager(m.db).Ingest(catalogID, in)
 }
 

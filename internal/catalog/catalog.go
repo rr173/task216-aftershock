@@ -58,19 +58,20 @@ func (m *Manager) MarkAnalyzing(id int64) error {
 	}
 }
 
-// Publish 发布目录（analyzing → published）。
+// Publish 发布目录（analyzing → published）。导入阶段必须先经分析阶段
+// （MarkAnalyzing）后才能发布，仍处于 importing 的目录将被拒绝并保留导入状态。
 func (m *Manager) Publish(id int64) error {
 	c, err := m.db.GetCatalog(id)
 	if err != nil {
 		return err
 	}
 	switch c.Status {
-	case model.CatalogImporting, model.CatalogAnalyzing, model.CatalogPublished:
+	case model.CatalogAnalyzing, model.CatalogPublished:
 		return m.db.UpdateCatalogStatus(id, model.CatalogPublished, true, false)
 	case model.CatalogArchived:
 		return model.ErrArchived
 	default:
-		return model.ErrConflict
+		return fmt.Errorf("%w: catalog in status %s, must be analyzing before publish", model.ErrConflict, c.Status)
 	}
 }
 
