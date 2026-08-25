@@ -25,6 +25,9 @@ type EventInput struct {
 // Validate 校验一条事件输入，返回错误说明（nil 表示合法）。
 // 规则：坐标在合法经纬度范围、深度与震级在合理区间、时间非零、定位误差非负。
 func Validate(in EventInput) error {
+	if in.OriginTime.IsZero() {
+		return fmt.Errorf("%w: origin_time is required", model.ErrInvalid)
+	}
 	if in.Latitude < -90 || in.Latitude > 90 {
 		return fmt.Errorf("%w: latitude out of range", model.ErrInvalid)
 	}
