@@ -70,7 +70,7 @@ func (m *Manager) LockMainshock(clusterID, eventID int64) (*model.Cluster, error
 		}
 	}
 
-	if err := m.db.UpdateCluster(clusterID, c.MainshockID, model.ClusterConfirmed, c.Confidence); err != nil {
+	if err := m.db.UpdateCluster(clusterID, eventID, model.ClusterConfirmed, c.Confidence); err != nil {
 		return nil, err
 	}
 	return m.db.GetCluster(clusterID)

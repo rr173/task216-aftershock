@@ -66,8 +66,8 @@ func (db *DB) ListClustersByCatalog(catalogID int64) ([]model.Cluster, error) {
 // UpdateCluster 更新簇的主震、状态与置信度。
 func (db *DB) UpdateCluster(id, mainshockID int64, status string, confidence float64) error {
 	_, err := db.conn.Exec(
-		`UPDATE clusters SET status = ?, confidence = ? WHERE id = ?`,
-		status, confidence, id)
+		`UPDATE clusters SET mainshock_id = ?, status = ?, confidence = ? WHERE id = ?`,
+		mainshockID, status, confidence, id)
 	return mapSQLError(err)
 }
 

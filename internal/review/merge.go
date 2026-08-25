@@ -32,11 +32,11 @@ func (m *Manager) MergeClusters(clusterAID, clusterBID int64) (*model.Cluster, e
 	newMainshockID := a.MainshockID
 	am, errA := m.db.GetEvent(a.MainshockID)
 	bm, errB := m.db.GetEvent(b.MainshockID)
-	if errA == nil && errB == nil && bm.Magnitude < am.Magnitude {
+	if errA == nil && errB == nil && bm.Magnitude > am.Magnitude {
 		newMainshockID = b.MainshockID
 	}
 
-	// 迁移 B 的成员到 A。
+	// 迁移 B 的成员到 A，并按新主震同步角色。
 	membersB, err := m.db.ListMembersByCluster(clusterBID)
 	if err != nil {
 		return nil, err
@@ -49,6 +49,7 @@ func (m *Manager) MergeClusters(clusterAID, clusterBID int64) (*model.Cluster, e
 		if mem.EventID == newMainshockID {
 			role = model.RoleMainshock
 		} else if mem.EventID == b.MainshockID && newMainshockID != b.MainshockID {
+			// B 的原主震若不再担任主震，降为余震。
 			role = model.RoleAftershock
 		}
 		if err := m.db.AddMembership(clusterAID, mem.EventID, role); err != nil {
@@ -56,22 +57,34 @@ func (m *Manager) MergeClusters(clusterAID, clusterBID int64) (*model.Cluster, e
 		}
 	}
 
-	// 若新主震原本在 A 中为 aftershock，修正角色。
+	// 若主震发生变更，重写 A 中成员角色：新主震升为主震，原主震降为余震。
 	if newMainshockID != a.MainshockID {
-		membersA, _ := m.db.ListMembersByCluster(clusterAID)
+		membersA, err := m.db.ListMembersByCluster(clusterAID)
+		if err != nil {
+			return nil, err
+		}
 		for _, mem := range membersA {
-			if mem.EventID == newMainshockID && mem.Role == model.RoleAftershock {
+			if mem.EventID == newMainshockID {
+				if mem.Role != model.RoleMainshock {
+					if err := m.db.DeleteMembership(clusterAID, mem.EventID); err != nil {
+						return nil, err
+					}
+					if err := m.db.AddMembership(clusterAID, mem.EventID, model.RoleMainshock); err != nil {
+						return nil, err
+					}
+				}
+			} else if mem.EventID == a.MainshockID && mem.Role == model.RoleMainshock {
 				if err := m.db.DeleteMembership(clusterAID, mem.EventID); err != nil {
 					return nil, err
 				}
-				if err := m.db.AddMembership(clusterAID, mem.EventID, model.RoleMainshock); err != nil {
+				if err := m.db.AddMembership(clusterAID, mem.EventID, model.RoleAftershock); err != nil {
 					return nil, err
 				}
 			}
 		}
 	}
 
-	// 更新置信度（合并取较高者）与状态。
+	// 更新置信度（合并取较高者）与状态，并把新主震写入簇 A。
 	conf := a.Confidence
 	if b.Confidence > conf {
 		conf = b.Confidence
