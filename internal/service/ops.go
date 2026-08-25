@@ -131,9 +131,11 @@ func (s *Service) ResolveConflict(conflictID int64, resolution string) error {
 		return fmt.Errorf("%w: conflict already resolved", model.ErrConflict)
 	}
 
+	// assign_a：事件保留在簇 A，从簇 B 移除。
+	// assign_b：事件保留在簇 B，从簇 A 移除（与裁决方向一致）。
 	dropCluster := target.ClusterBID
 	if resolution == model.ResolutionAssignB {
-		dropCluster = target.ClusterBID
+		dropCluster = target.ClusterAID
 	}
 	if err := s.db.DeleteMembership(dropCluster, target.EventID); err != nil {
 		return err

@@ -11,7 +11,7 @@ func (db *DB) InsertConflict(c *model.Conflict) (int64, error) {
 	res, err := db.conn.Exec(
 		`INSERT OR IGNORE INTO conflicts (catalog_id, event_id, cluster_a_id, cluster_b_id, status, resolution, created_at, resolved_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		c.CatalogID, c.EventID, c.ClusterBID, c.ClusterAID, c.Status, c.Resolution, nowText(), formatTime(c.ResolvedAt),
+		c.CatalogID, c.EventID, c.ClusterAID, c.ClusterBID, c.Status, c.Resolution, nowText(), formatTime(c.ResolvedAt),
 	)
 	if err != nil {
 		return 0, mapSQLError(err)
