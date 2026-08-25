@@ -87,21 +87,23 @@ func (db *DB) PublishVersion(id int64) error {
 	return mapSQLError(err)
 }
 
-// SupersedeVersions 把目录下其它版本标记为已替代。
+// SupersedeVersions 把目录下除 exceptID 外的其它版本标记为已被 supersededBy 替代。
+// exceptID 是新发布（保留为活动）的版本，其余版本（无论 draft/published）一律转为 superseded。
 func (db *DB) SupersedeVersions(catalogID int64, exceptID int64, supersededBy int64) error {
 	_, err := db.conn.Exec(
-		`UPDATE versions SET status = ?, superseded_by = ? WHERE catalog_id = ? AND id = ?`,
+		`UPDATE versions SET status = ?, superseded_by = ? WHERE catalog_id = ? AND id != ?`,
 		model.VersionSuperseded, supersededBy, catalogID, exceptID)
 	return mapSQLError(err)
 }
 
 // GetActivePublishedVersion 返回目录当前活动（已发布且未被替代）版本。
+// 同一目录最多存在一个 published 版本；按 number DESC 取最新，保证可追溯。
 func (db *DB) GetActivePublishedVersion(catalogID int64) (*model.Version, error) {
 	var v model.Version
 	var createdAt, frozenAt string
 	err := db.conn.QueryRow(
 		`SELECT id, catalog_id, number, label, status, snapshot_hash, created_at, frozen_at, superseded_by
-		 FROM versions WHERE catalog_id = ? AND status = ? LIMIT 1`,
+		 FROM versions WHERE catalog_id = ? AND status = ? ORDER BY number DESC LIMIT 1`,
 		catalogID, model.VersionPublished,
 	).Scan(&v.ID, &v.CatalogID, &v.Number, &v.Label, &v.Status, &v.SnapshotHash, &createdAt, &frozenAt, &v.SupersededBy)
 	if err != nil {

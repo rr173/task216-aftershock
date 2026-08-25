@@ -47,6 +47,7 @@ func (m *Manager) CreateDraft(catalogID int64, label string) (*model.Version, er
 }
 
 // Publish 冻结版本：draft → published，并把目录其它版本标记为 superseded。
+// 新发布的版本成为目录唯一活动版本；先前的版本（含已发布与草稿）一律被其替代。
 func (m *Manager) Publish(versionID int64) (*model.Version, error) {
 	v, err := m.db.GetVersion(versionID)
 	if err != nil {
@@ -63,7 +64,8 @@ func (m *Manager) Publish(versionID int64) (*model.Version, error) {
 	if err := m.db.PublishVersion(versionID); err != nil {
 		return nil, err
 	}
-	if err := m.db.SupersedeVersions(v.CatalogID, 0, versionID); err != nil {
+	// 除新发布版本外，目录其余版本全部标记为已被本版本替代。
+	if err := m.db.SupersedeVersions(v.CatalogID, versionID, versionID); err != nil {
 		return nil, err
 	}
 	return m.db.GetVersion(versionID)
