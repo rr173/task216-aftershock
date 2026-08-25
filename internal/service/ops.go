@@ -52,7 +52,7 @@ func (s *Service) IdentifyClusters(catalogID int64, in model.ClusterInput) (*Ide
 	for _, draft := range result.Clusters {
 		cl := &model.Cluster{
 			CatalogID:   catalogID,
-			MainshockID: 0,
+			MainshockID: draft.Mainshock.ID,
 			Status:      model.ClusterCandidate,
 			Confidence:  draft.Confidence,
 		}

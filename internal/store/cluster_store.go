@@ -6,12 +6,13 @@ import (
 	"task216-aftershock/internal/model"
 )
 
-// InsertCluster 创建余震簇。
+// InsertCluster 创建余震簇。mainshock_id 取自 c.MainshockID（识别或锁定时写入），
+// 保证持久化的主震信息始终可用，而非恒为 0。
 func (db *DB) InsertCluster(c *model.Cluster) (int64, error) {
 	res, err := db.conn.Exec(
 		`INSERT INTO clusters (catalog_id, mainshock_id, status, confidence, created_at)
 		 VALUES (?, ?, ?, ?, ?)`,
-		c.CatalogID, 0, c.Status, c.Confidence, nowText(),
+		c.CatalogID, c.MainshockID, c.Status, c.Confidence, nowText(),
 	)
 	if err != nil {
 		return 0, mapSQLError(err)

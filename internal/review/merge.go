@@ -28,10 +28,18 @@ func (m *Manager) MergeClusters(clusterAID, clusterBID int64) (*model.Cluster, e
 		return nil, fmt.Errorf("%w: a merged cluster cannot be merged again", model.ErrConflict)
 	}
 
-	// 确定合并后主震：比较两个主震的震级，取震级更大者。
+	// 解析各自的主震事件：优先取簇持久化的 MainshockID，缺失时回退到成员关系中的 mainshock 角色。
+	am, err := m.resolveMainshock(a)
+	if err != nil {
+		return nil, err
+	}
+	bm, err := m.resolveMainshock(b)
+	if err != nil {
+		return nil, err
+	}
+
+	// 确定合并后主震：比较两个主震的震级，取震级更大者（相等时保持 A）。
 	newMainshockID := a.MainshockID
-	am, _ := m.db.GetEvent(a.MainshockID)
-	bm, _ := m.db.GetEvent(b.MainshockID)
 	if bm.Magnitude > am.Magnitude {
 		newMainshockID = b.MainshockID
 	}
@@ -83,4 +91,27 @@ func (m *Manager) MergeClusters(clusterAID, clusterBID int64) (*model.Cluster, e
 		return nil, err
 	}
 	return m.db.GetCluster(clusterAID)
+}
+
+// resolveMainshock 解析簇的主震事件：优先用簇持久化的 MainshockID 加载事件，
+// 该 ID 缺失（0 或事件已被删除）时回退到成员关系中 role=mainshock 的事件。
+// 返回 (主震事件, 错误)；若找不到主震则返回 ErrInvalid，避免后续解引用空指针。
+func (m *Manager) resolveMainshock(c *model.Cluster) (*model.Event, error) {
+	if c.MainshockID != 0 {
+		if ev, err := m.db.GetEvent(c.MainshockID); err == nil {
+			return ev, nil
+		}
+	}
+	members, err := m.db.ListMembersByCluster(c.ID)
+	if err != nil {
+		return nil, err
+	}
+	for _, mem := range members {
+		if mem.Role == model.RoleMainshock {
+			if ev, err := m.db.GetEvent(mem.EventID); err == nil {
+				return ev, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("%w: cluster %d has no resolvable mainshock", model.ErrInvalid, c.ID)
 }
