@@ -79,8 +79,21 @@ func (s *Service) IdentifyClusters(catalogID int64, in model.ClusterInput) (*Ide
 		if len(cd.ClusterRef) < 2 {
 			continue
 		}
-		aID := res.ClusterIDs[cd.ClusterRef[0]]
-		bID := res.ClusterIDs[cd.ClusterRef[1]]
+		// 防御：ClusterRef 必须指向已写入的有效簇下标，越界或重复则跳过。
+		var refs []int
+		seen := make(map[int]bool)
+		for _, ref := range cd.ClusterRef {
+			if ref < 0 || ref >= len(res.ClusterIDs) || seen[ref] {
+				continue
+			}
+			seen[ref] = true
+			refs = append(refs, ref)
+		}
+		if len(refs) < 2 {
+			continue
+		}
+		aID := res.ClusterIDs[refs[0]]
+		bID := res.ClusterIDs[refs[1]]
 		conf := &model.Conflict{
 			CatalogID:  catalogID,
 			EventID:    cd.Event.ID,
@@ -97,7 +110,12 @@ func (s *Service) IdentifyClusters(catalogID int64, in model.ClusterInput) (*Ide
 	// 涉及冲突的簇标记 overlapping。
 	overlapClusterSet := make(map[int64]bool)
 	for _, cd := range result.Conflicts {
+		seen := make(map[int]bool)
 		for _, ref := range cd.ClusterRef {
+			if ref < 0 || ref >= len(res.ClusterIDs) || seen[ref] {
+				continue
+			}
+			seen[ref] = true
 			overlapClusterSet[res.ClusterIDs[ref]] = true
 		}
 	}

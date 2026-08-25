@@ -78,9 +78,13 @@ func Build(events []model.Event, p Params) (*BuildResult, error) {
 		if !found {
 			continue
 		}
+		// ClusterRef 记录该事件落入的全部簇草稿下标（>=2），
+		// 不能混入簇数量这类越界值，否则后续按 refs 取簇 id 会越界。
+		refsCopy := make([]int, len(refs))
+		copy(refsCopy, refs)
 		res.Conflicts = append(res.Conflicts, ConflictDraft{
 			Event:      ev,
-			ClusterRef: []int{len(mainshocks), refs[0]},
+			ClusterRef: refsCopy,
 		})
 	}
 
