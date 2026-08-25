@@ -40,7 +40,11 @@ func (s *Service) IdentifyClusters(catalogID int64, in model.ClusterInput) (*Ide
 		return nil, err
 	}
 
-	// 清空旧簇与冲突，重建。
+	// 清空旧簇与冲突，重建：重复识别应重建当前结果，
+	// 而非保留旧冲突并产生重复记录。
+	if err := s.db.DeleteConflictsByCatalog(catalogID); err != nil {
+		return nil, err
+	}
 	if err := s.db.DeleteClustersByCatalog(catalogID); err != nil {
 		return nil, err
 	}

@@ -75,8 +75,8 @@ func (db *DB) ResolveConflict(id int64, resolution string) error {
 	return mapSQLError(err)
 }
 
-// DeleteConflictsByCatalog 清空目录下的冲突记录。
+// DeleteConflictsByCatalog 清空目录下的全部冲突记录（重新识别时重建）。
 func (db *DB) DeleteConflictsByCatalog(catalogID int64) error {
-	_, err := db.conn.Exec(`DELETE FROM conflicts WHERE catalog_id = ? AND status = ?`, catalogID, model.ConflictResolved)
+	_, err := db.conn.Exec(`DELETE FROM conflicts WHERE catalog_id = ?`, catalogID)
 	return mapSQLError(err)
 }
